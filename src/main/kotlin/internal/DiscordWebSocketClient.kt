@@ -6,28 +6,51 @@ import org.json.JSONObject
 import java.net.URI
 import java.util.*
 
+
 class DiscordWebSocketClient(serverUri: URI?, private val token: String, private val intents: Int) : WebSocketClient(serverUri) {
     private var heartbeatTimer: Timer? = null
-
-    init {
-        startHeartbeat()
-    }
 
     override fun onOpen(handshakedata: ServerHandshake) {
         println("Connected to Discord WebSocket server.")
         identify()
+        startHeartbeat("1")
     }
+
+
+    private fun startHeartbeat(heartbeatInterval: String) {
+        heartbeatTimer = Timer()
+        heartbeatTimer!!.scheduleAtFixedRate(object : TimerTask() {
+            override fun run() {
+                sendHeartbeat()
+            }
+        }, 1, heartbeatInterval.toLong())
+    }
+
+    private fun sendHeartbeat() {
+        val heartbeat = JSONObject()
+        heartbeat.put("op", OpCode.heartbeat)
+        heartbeat.put("d", "null") // No data needed for heartbeat
+        send(heartbeat.toString())
+    }
+
+    private fun stopHeartbeat() {
+        if (heartbeatTimer != null) {
+            heartbeatTimer!!.cancel()
+            heartbeatTimer = null
+        }
+    }
+
+
+    override fun onClose(code: Int, reason: String?, remote: Boolean) {
+        TODO("Not yet implemented")
+        stopHeartbeat()
+    }
+
 
     override fun onMessage(message: String) {
         println("Received message from Discord: $message")
         parseMessage(message)
     }
-
-    override fun onClose(code: Int, reason: String, remote: Boolean) {
-        println("Connection closed. Code: $code, Reason: $reason")
-        stopHeartbeat()
-    }
-
     override fun onError(ex: Exception) {
         System.err.println("Error occurred: $ex")
         stopHeartbeat()
@@ -39,7 +62,7 @@ class DiscordWebSocketClient(serverUri: URI?, private val token: String, private
             if (json.has("op")) {
                 val op = json.getInt("op")
                 when (op) {
-                    10 -> handleOp10(json)
+                    OpCode.hello -> handleOp10(json)
                     else -> println("Unhandled operation: $op")
                 }
             }
@@ -55,36 +78,13 @@ class DiscordWebSocketClient(serverUri: URI?, private val token: String, private
         }
     }
 
-    private fun startHeartbeat() {
-        heartbeatTimer = Timer()
-        heartbeatTimer!!.scheduleAtFixedRate(object : TimerTask() {
-            override fun run() {
-                sendHeartbeat()
-            }
-        }, 0, 1)
-    }
-
-    private fun sendHeartbeat() {
-        val heartbeat = JSONObject()
-        heartbeat.put("op", 1)
-        heartbeat.put("d", System.currentTimeMillis())
-        send(heartbeat.toString())
-    }
-
-    private fun stopHeartbeat() {
-        if (heartbeatTimer != null) {
-            heartbeatTimer!!.cancel()
-            heartbeatTimer = null
-        }
-    }
-
     private fun identify() {
         val identify = JSONObject()
         val properties = JSONObject()
         properties.put("\$os", System.getProperty("os.name"))
         properties.put("\$browser", "Java WebSocket Client")
         properties.put("\$device", "Java")
-        identify.put("op", 2)
+        identify.put("op", OpCode.identify)
         identify.put(
             "d", JSONObject()
                 .put("intents", intents)
