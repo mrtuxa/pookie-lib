@@ -13,7 +13,7 @@ class DiscordWebSocketClient(serverUri: URI?, private val token: String, private
     override fun onOpen(handshakedata: ServerHandshake) {
         println("Connected to Discord WebSocket server.")
         identify()
-        startHeartbeat("1")
+       //  startHeartbeat("1")
     }
 
 
@@ -56,6 +56,10 @@ class DiscordWebSocketClient(serverUri: URI?, private val token: String, private
         stopHeartbeat()
     }
 
+    fun triggeredEvent(op: Int) {
+        println("$op was triggered")
+    }
+
     private fun parseMessage(message: String) {
         try {
             val json = JSONObject(message)
@@ -63,7 +67,10 @@ class DiscordWebSocketClient(serverUri: URI?, private val token: String, private
                 val op = json.getInt("op")
                 when (op) {
                     OpCode.hello -> handleOp10(json)
+                    OpCode.dispatch -> triggeredEvent(op)
+                    OpCode.heartbeat_ack -> triggeredEvent(op)
                     else -> println("Unhandled operation: $op")
+
                 }
             }
         } catch (e: Exception) {
