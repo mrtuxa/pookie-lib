@@ -1,0 +1,6 @@
+
+commit_and_push() {
+ git add src/ scripts src .gitignore build.gradle.kts flake.nix flake.lock gradle.properties gradlew gradlew.bat README.md settings.gradle.kts shell.nix
+ git commit -m "$1"
+ git push
+}
