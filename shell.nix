@@ -2,9 +2,10 @@
 
 pkgs.mkShell {
 
-  buildInputs = [
-    pkgs.gradle
-    pkgs.jdk21
+  buildInputs = with pkgs; [
+    gradle
+    jdk21
+    cloc
   ];
 
 }
